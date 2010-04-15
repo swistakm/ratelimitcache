@@ -84,8 +84,10 @@ class ratelimit(object):
         "Used for setting the memcached cache expiry"
         return (self.minutes + 1) * 60
 
+
 class ratelimit_post(ratelimit):
-    "Rate limit POSTs - can be used to protect a login form"
+    """Rate limit POSTs - can be used to protect a login form
+    uses both IP address and username for key"""
     key_field = None # If provided, this POST var will affect the rate limit
     
     def should_ratelimit(self, request):
@@ -99,3 +101,24 @@ class ratelimit_post(ratelimit):
             extra += '-' + value
         return extra
 
+class ratelimit_post_noip(ratelimit):
+    """Rate limit POSTs - can be used to protect a login form
+    uses key_field for key
+    quickie version
+
+    ratelimit_post_noip(minutes=3, requests=3,key_field='username')(login)
+
+    """
+    key_field = None # If provided, this POST var will affect the rate limit
+    
+    def should_ratelimit(self, request):
+        return request.method == 'POST'
+    
+    def key_extra(self, request):
+        # IP address and key_field (if it is set)
+        extra = '' # super(ratelimit_post, self).key_extra(request)
+        if self.key_field:
+            value = sha.new(request.POST.get(self.key_field, '')).hexdigest()
+            extra += '-' + value
+        return extra
+    

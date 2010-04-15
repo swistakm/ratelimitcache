@@ -1,6 +1,7 @@
 ratelimitcache for Django
 =========================
 By Simon Willison - http://simonwillison.net/
+a fork by Chris LM
 
 A rate limiter that uses Django's cache framework, with no requirement for a 
 persistent data store.
