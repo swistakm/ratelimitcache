@@ -122,3 +122,34 @@ class ratelimit_post_noip(ratelimit):
             extra += '-' + value
         return extra
     
+
+class ratelimit_post_noip_forclass(ratelimit_post_noip):
+    """Rate limit POSTs - can be used to protect a login form
+    uses key_field for key
+    quickie version for class instance method 
+
+    ratelimit_post_noip(minutes=3, requests=3,key_field='username')(login)
+
+    """
+
+    def __call__(self, fn):
+        def wrapper(inst, request, *args, **kwargs):
+            return self.view_wrapper(inst, request, fn, *args, **kwargs)
+        functools.update_wrapper(wrapper, fn)
+        return wrapper
+
+    def view_wrapper(self, inst, request, fn, *args, **kwargs):
+        # inst is the other classes "self" instance
+        if not self.should_ratelimit(request):
+            return fn(inst, request, *args, **kwargs)
+        
+        counts = self.get_counters(request).values()
+        
+        # Increment rate limiting counter
+        self.cache_incr(self.current_key(request))
+        
+        # Have they failed?
+        if sum(counts) >= self.requests:
+            return self.disallowed(request)
+        
+        return fn(inst, request, *args, **kwargs)
