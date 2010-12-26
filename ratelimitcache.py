@@ -9,7 +9,7 @@ class ratelimit(object):
     minutes = 2 # The time period
     requests = 20 # Number of allowed requests in that time period
     
-    prefix = 'rl-' # Prefix for memcache key
+    prefix = 'ratelimit-' # Prefix for memcache key
     
     def __init__(self, **options):
         for key, value in options.items():
