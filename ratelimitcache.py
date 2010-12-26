@@ -62,7 +62,7 @@ class ratelimit(object):
                 self.prefix,
                 extra,
                 (now - timedelta(minutes = minute)).strftime('%Y%m%d%H%M')
-            ) for minute in range(self.minutes + 1)
+            ) for minute in range(self.minutes)
         ]
     
     def current_key(self, request):
