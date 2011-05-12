@@ -85,8 +85,10 @@ class ratelimit(object):
         "Used for setting the memcached cache expiry"
         return (self.minutes + 1) * 60
 
+
 class ratelimit_post(ratelimit):
-    "Rate limit POSTs - can be used to protect a login form"
+    """Rate limit POSTs - can be used to protect a login form
+    uses both IP address and username for key"""
     key_field = None # If provided, this POST var will affect the rate limit
     
     def should_ratelimit(self, request):
@@ -101,3 +103,55 @@ class ratelimit_post(ratelimit):
             extra += '-' + digest
         return extra
 
+class ratelimit_post_noip(ratelimit):
+    """Rate limit POSTs - can be used to protect a login form
+    uses key_field for key
+    quickie version
+
+    ratelimit_post_noip(minutes=3, requests=3,key_field='username')(login)
+
+    """
+    key_field = None # If provided, this POST var will affect the rate limit
+    
+    def should_ratelimit(self, request):
+        return request.method == 'POST'
+    
+    def key_extra(self, request):
+        # IP address and key_field (if it is set)
+        extra = '' # super(ratelimit_post, self).key_extra(request)
+        if self.key_field:
+            value = sha.new(request.POST.get(self.key_field, '')).hexdigest()
+            extra += '-' + value
+        return extra
+    
+
+class ratelimit_post_noip_forclass(ratelimit_post_noip):
+    """Rate limit POSTs - can be used to protect a login form
+    uses key_field for key
+    quickie version for class instance method 
+
+    ratelimit_post_noip(minutes=3, requests=3,key_field='username')(login)
+
+    """
+
+    def __call__(self, fn):
+        def wrapper(inst, request, *args, **kwargs):
+            return self.view_wrapper(inst, request, fn, *args, **kwargs)
+        functools.update_wrapper(wrapper, fn)
+        return wrapper
+
+    def view_wrapper(self, inst, request, fn, *args, **kwargs):
+        # inst is the other classes "self" instance
+        if not self.should_ratelimit(request):
+            return fn(inst, request, *args, **kwargs)
+        
+        counts = self.get_counters(request).values()
+        
+        # Increment rate limiting counter
+        self.cache_incr(self.current_key(request))
+        
+        # Have they failed?
+        if sum(counts) >= self.requests:
+            return self.disallowed(request)
+        
+        return fn(inst, request, *args, **kwargs)
