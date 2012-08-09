@@ -33,7 +33,7 @@ class ratelimit(object):
         
         # Have they failed?
         if sum(counts) >= self.requests:
-            return self.disallowed(request)
+            return self.disallowed(request, *args, **kwargs)
         
         return fn(request, *args, **kwargs)
     
@@ -77,7 +77,7 @@ class ratelimit(object):
         # By default, their IP address is used
         return request.META.get('REMOTE_ADDR', '')
     
-    def disallowed(self, request):
+    def disallowed(self, request, *args, **kwargs):
         "Over-ride this method if you want to log incidents"
         return HttpResponseForbidden('Rate limit exceeded')
     
