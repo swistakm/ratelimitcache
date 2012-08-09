@@ -9,7 +9,8 @@ class ratelimit(object):
     # This class is designed to be sub-classed
     minutes = 2 # The time period
     requests = 20 # Number of allowed requests in that time period
-    
+    limit_only_successful = False
+
     prefix = 'ratelimit-' # Prefix for memcache key
     
     def __init__(self, **options):
@@ -28,13 +29,15 @@ class ratelimit(object):
         
         counts = (int(x) for x in self.get_counters(request).values())
         
-        # Increment rate limiting counter
-        self.cache_incr(self.current_key(request))
-        
         # Have they failed?
         if sum(counts) >= self.requests:
+            if not self.limit_only_successful:
+                # Increment rate limiting counter if not limiting only successful
+                self.cache_incr(self.current_key(request))
             return self.disallowed(request, *args, **kwargs)
-        
+
+        # Increment rate limiting counter
+        self.cache_incr(self.current_key(request))
         return fn(request, *args, **kwargs)
     
     def cache_get_many(self, keys):
